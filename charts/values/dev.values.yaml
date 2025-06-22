@@ -1,0 +1,16 @@
+replicaCount: 2
+
+image:
+  repository: 950274644703.dkr.ecr.ap-northeast-2.amazonaws.com/product/dev
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  name: dev-app
+  targetPort: 8080
+
+ingress:
+  name: dev-ingress
+
+rollout:
+  enabled: false
