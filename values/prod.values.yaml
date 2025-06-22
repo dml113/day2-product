@@ -11,3 +11,6 @@ service:
 
 ingress:
   name: prod-ingress
+  
+rollout:
+  enabled: true
