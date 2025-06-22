@@ -9,6 +9,6 @@ entries:
     name: app
     type: application
     urls:
-    - https://dml113.github.io/day2-product/charts
+    - https://dml113.github.io/day2-product/charts/app-0.1.0.tgz
     version: 0.1.0
 generated: "2025-06-22T10:23:44.682679043Z"
