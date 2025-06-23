@@ -5,6 +5,7 @@ metadata:
   name: {{ .Values.service.name }}-active
   namespace: app
 spec:
+  type: NodePort
   selector:
     app: {{ .Chart.Name }}
   ports:
@@ -18,6 +19,7 @@ metadata:
   name: {{ .Values.service.name }}-preview
   namespace: app
 spec:
+  type: NodePort
   selector:
     app: {{ .Chart.Name }}
   ports:
