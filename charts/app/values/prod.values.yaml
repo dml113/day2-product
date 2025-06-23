@@ -12,5 +12,8 @@ service:
 ingress:
   name: prod-ingress
   
+loadbalancer:
+  name: prod-alb
+
 rollout:
   enabled: true
