@@ -1,28 +1,27 @@
-name: Prod CI/CD Pipeline
+name: Dev CI/CD Pipeline
 
 on:
   push:
-    branches: [prod]
+    branches: [dev]
   pull_request:
-    types: [labeled]
-    branches: [prod]
+    branches: [dev]
 
 jobs:
-  auto-merge-approval:
-    if: github.event.label.name == 'approval'
-    runs-on: [self-hosted, linux, x64, prod]
+  auto-merge-feature:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
+    runs-on: [self-hosted, linux, x64, dev]
     permissions:
       pull-requests: write
       contents: write
     steps:
-      - name: Merge PR with approval label
+      - name: Merge feature/* PR into dev
         run: gh pr merge ${{ github.event.pull_request.number }} --merge --admin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-deploy:
     if: github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64, prod]
+    runs-on: [self-hosted, linux, x64, dev]
     permissions:
       contents: write
       id-token: write
@@ -44,39 +43,25 @@ jobs:
 
       - name: Build and push multi-arch image
         run: |
-          IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com/product/prod
+          IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com/product/dev
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --tag $IMAGE_URI:${{ github.sha }} \
             --push .
 
-      - name: Update prod.values.yaml
+      - name: Update dev.values.yaml
         run: |
-          sed -i "s|tag: .*|tag: '${GITHUB_SHA}'|" values/prod.values.yaml
+          sed -i "s|tag: .*|tag: '${GITHUB_SHA}'|" values/dev.values.yaml
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add values/prod.values.yaml
-          git commit -m "chore: bump prod image tag to ${GITHUB_SHA}"
-          git pull --rebase origin prod || true
-          git push origin prod
+          git add values/dev.values.yaml
+          git commit -m "chore: bump dev image tag to ${GITHUB_SHA}"
+          git pull --rebase origin dev || true
+          git push origin dev
 
-      - name: ArgoCD Sync Prod App
+      - name: ArgoCD Sync Dev App
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
         run: |
           argocd login $ARGOCD_SERVER --username admin --password Skill53## --insecure
-          argocd app sync prod
-
-  fast-forward-dev:
-    if: github.event_name == 'pull_request' && github.event.label.name == 'approval'
-    runs-on: [self-hosted, linux, x64, prod]
-    needs: auto-merge-approval
-    steps:
-      - name: Fast-forward dev branch
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git fetch origin
-          git checkout dev
-          git merge --ff-only origin/prod
-          git push origin dev
+          argocd app sync dev
