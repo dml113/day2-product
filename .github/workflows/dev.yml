@@ -1,19 +1,33 @@
 name: Dev CI/CD Pipeline
+
 on:
   push:
-    branches:
-      - dev
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
 jobs:
+  auto-merge-feature:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
+    runs-on: [self-hosted, linux, x64, dev]
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Merge feature/* PR into dev
+        run: gh pr merge ${{ github.event.pull_request.number }} --merge --admin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-deploy:
+    if: github.event_name == 'push'
     runs-on: [self-hosted, linux, x64, dev]
     permissions:
       contents: write
-      id-token: write  # for OIDC
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: dev
 
       - name: Setup QEMU and Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -30,42 +44,27 @@ jobs:
       - name: Build and push multi-arch image
         run: |
           IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com/product/dev
-          docker buildx build \\
-            --platform linux/amd64,linux/arm64 \\
-            --tag $IMAGE_URI:${{ github.sha }} \\
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag $IMAGE_URI:${{ github.sha }} \
             --push .
 
       - name: Update dev.values.yaml
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const filePath = 'values/dev.values.yaml';
-            let content = fs.readFileSync(filePath, 'utf8');
-            content = content.replace(/tag: .*/g, `tag: '${process.env.GITHUB_SHA}'`);
-            fs.writeFileSync(filePath, content);
-            await github.rest.repos.createCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              message: `chore: bump dev image tag to ${{ github.sha }}`,
-              tree: (await github.rest.git.createTree({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base_tree: context.sha,
-                tree: [ { path: filePath, mode: '100644', type: 'blob', content } ]
-              })).data.sha,
-              parents: [context.sha]
-            });
-
-      - name: Push changes
         run: |
+          sed -i "s|tag: .*|tag: '${GITHUB_SHA}'|" values/dev.values.yaml
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+          git add values/dev.values.yaml
+          git commit -m "chore: bump dev image tag to ${GITHUB_SHA}"
+          git pull --rebase origin dev || true
           git push origin dev
 
       - name: ArgoCD Sync Dev App
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
         run: |
-          argocd login $ARGOCD_SERVER --username admin --password Skill53## --insecure
-          argocd app sync dec
+          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+          rm argocd-linux-amd64
+          echo y | argocd login $ARGOCD_SERVER --username admin --password Skill53## --insecure
+          argocd app sync dev
