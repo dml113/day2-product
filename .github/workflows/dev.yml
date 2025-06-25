@@ -30,9 +30,9 @@ jobs:
       - name: Build and push multi-arch image
         run: |
           IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com/product/dev
-          docker buildx build \\
-            --platform linux/amd64,linux/arm64 \\
-            --tag $IMAGE_URI:${{ github.sha }} \\
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag $IMAGE_URI:${{ github.sha }} \
             --push .
 
       - name: Update dev.values.yaml
