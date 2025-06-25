@@ -1,19 +1,33 @@
 name: Dev CI/CD Pipeline
+
 on:
   push:
-    branches:
-      - dev
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
 jobs:
+  auto-merge-feature:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
+    runs-on: [self-hosted, linux, x64, dev]
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Merge feature/* PR into dev
+        run: gh pr merge ${{ github.event.pull_request.number }} --merge --admin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-deploy:
+    if: github.event_name == 'push'
     runs-on: [self-hosted, linux, x64, dev]
     permissions:
       contents: write
-      id-token: write  # for OIDC
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: dev
 
       - name: Setup QEMU and Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -42,13 +56,7 @@ jobs:
           git config user.email "actions@github.com"
           git add values/dev.values.yaml
           git commit -m "chore: bump dev image tag to ${GITHUB_SHA}"
-          git pull --rebase origin dev
-          git push origin dev
-
-      - name: Push changes
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git pull --rebase origin dev || true
           git push origin dev
 
       - name: ArgoCD Sync Dev App
@@ -56,4 +64,4 @@ jobs:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
         run: |
           argocd login $ARGOCD_SERVER --username admin --password Skill53## --insecure
-          argocd app sync dec
+          argocd app sync dev
