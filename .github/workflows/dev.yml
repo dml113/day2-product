@@ -14,10 +14,11 @@ jobs:
       pull-requests: write
       contents: write
     steps:
-      - name: Merge feature/* PR into dev
-        run: gh pr merge ${{ github.event.pull_request.number }} --merge --admin
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable auto-merge for PR
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: merge
 
   build-and-deploy:
     if: github.event_name == 'push'
