@@ -42,6 +42,7 @@ jobs:
           git config user.email "actions@github.com"
           git add values/dev.values.yaml
           git commit -m "chore: bump dev image tag to ${GITHUB_SHA}"
+          git pull --rebase origin dev
           git push origin dev
 
       - name: Push changes
