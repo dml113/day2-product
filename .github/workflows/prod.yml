@@ -10,7 +10,7 @@ on:
 jobs:
   auto-merge-approval:
     if: github.event.label.name == 'approval'
-    runs-on: [self-hosted, linux, x64, prod]
+    runs-on: prod
     permissions:
       pull-requests: write
       contents: write
@@ -22,7 +22,7 @@ jobs:
 
   build-and-deploy:
     if: github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64, prod]
+    runs-on: prod
     permissions:
       contents: write
       id-token: write
