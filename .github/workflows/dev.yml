@@ -9,7 +9,7 @@ on:
 jobs:
   auto-merge-feature:
     if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
-    runs-on: [self-hosted, linux, x64, dev]
+    runs-on: dev
     permissions:
       pull-requests: write
       contents: write
@@ -21,7 +21,7 @@ jobs:
 
   build-and-deploy:
     if: github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64, dev]
+    runs-on: dev
     permissions:
       contents: write
       id-token: write
